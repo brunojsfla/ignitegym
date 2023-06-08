@@ -1,4 +1,12 @@
-import { VStack, Image, Text, Center, Heading, ScrollView } from "native-base";
+import {
+  VStack,
+  Image,
+  Text,
+  Center,
+  Heading,
+  ScrollView,
+  useToast,
+} from "native-base";
 
 import { useNavigation } from "@react-navigation/native";
 import { AuthNavigatorRoutesProps } from "@routes/auth.routes";
@@ -13,6 +21,11 @@ import { useForm, Controller } from "react-hook-form";
 
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
+
+import { api } from "@services/api";
+import { AppError } from "@utils/AppError";
+import { useState } from "react";
+import { useAuth } from "@hooks/useAuth";
 
 type FormProps = {
   name: string;
@@ -48,14 +61,38 @@ export function SignUp() {
     resolver: yupResolver(signUpSchema),
   });
 
+  const [isLoading, setIsLoading] = useState(false);
+  const { signIn } = useAuth();
+
   const navigation = useNavigation<AuthNavigatorRoutesProps>();
+
+  const toast = useToast();
 
   function handleNavigateToSignIn() {
     navigation.goBack();
   }
 
-  function handleSingUp(data: FormProps) {
-    console.log(data);
+  async function handleSingUp({ name, email, password }: FormProps) {
+    try {
+      setIsLoading(true);
+      await api.post("/users", { name, email, password });
+
+      await signIn(email, password);
+    } catch (error) {
+      const isAppError = error instanceof AppError;
+
+      const title = isAppError
+        ? error.message
+        : "Falha ao criar a conta. Já estamos trabalhando nesse imprevisto. Por favor, tente novamente mais tarde!";
+
+      toast.show({
+        title,
+        placement: "top",
+        bgColor: "red.500",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -128,6 +165,7 @@ export function SignUp() {
           <Button
             title="Criar e acessar"
             onPress={handleSubmit(handleSingUp)}
+            isLoading={isLoading}
           />
         </Center>
 
