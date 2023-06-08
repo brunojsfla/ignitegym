@@ -1,4 +1,12 @@
-import { VStack, Image, Text, Center, Heading, ScrollView } from "native-base";
+import {
+  VStack,
+  Image,
+  Text,
+  Center,
+  Heading,
+  ScrollView,
+  useToast,
+} from "native-base";
 
 import { useNavigation } from "@react-navigation/native";
 import { AuthNavigatorRoutesProps } from "@routes/auth.routes";
@@ -11,6 +19,32 @@ import { Button } from "@components/Button";
 
 import { useForm, Controller } from "react-hook-form";
 
+import { useAuth } from "@hooks/useAuth";
+import { UserDTO } from "@dtos/UserDTO";
+
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import { AppError } from "@utils/AppError";
+import { useState } from "react";
+
+type FormData = {
+  email: string;
+  password: string;
+};
+
+const signInSchema = yup
+  .object({
+    email: yup
+      .string()
+      .email("E-mail inválido")
+      .required("O campo e-mail é obrigatório!"),
+    password: yup
+      .string()
+      .required("O campo senha é obrigatório!")
+      .min(6, "A senha deve possuir um mínino de 6 caracteres"),
+  })
+  .required();
+
 export function SignIn() {
   const {
     control,
@@ -19,17 +53,38 @@ export function SignIn() {
   } = useForm({
     defaultValues: {
       email: "",
-      senha: "",
+      password: "",
     },
+    resolver: yupResolver(signInSchema),
   });
 
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { signIn } = useAuth();
+
   const navigation = useNavigation<AuthNavigatorRoutesProps>();
+
+  const toast = useToast();
 
   function handleNavigateToSignUp() {
     navigation.navigate("signup");
   }
 
-  const onSubmit = (data) => console.log(data);
+  async function handleSignIn({ email, password }: FormData) {
+    try {
+      setIsLoading(true);
+      await signIn(email, password);
+    } catch (error) {
+      const isAppError = error instanceof AppError;
+
+      const title = isAppError
+        ? error.message
+        : "Não foi possível realizar o login! Tente novamente mais tarde!";
+
+      setIsLoading(false);
+      toast.show({ title, placement: "top", bgColor: "red.500" });
+    }
+  }
 
   return (
     <ScrollView
@@ -58,20 +113,38 @@ export function SignIn() {
 
           <Controller
             control={control}
-            rules={{ required: true }}
             name="email"
-            render={() => (
+            render={({ field: { onChange, value } }) => (
               <Input
                 placeholder="E-mail"
+                onChangeText={onChange}
+                value={value}
                 keyboardType="email-address"
+                autoCapitalize="none"
+                errorMessage={errors.email?.message}
+              />
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="password"
+            render={({ field: { onChange, value } }) => (
+              <Input
+                placeholder="Senha"
+                onChangeText={onChange}
+                value={value}
+                type="password"
                 autoCapitalize="none"
               />
             )}
           />
-          {errors.email && <Text color="gray.200">O campo e-mail é obrigatório</Text>}
 
-          <Input placeholder="Senha" type="password" />
-          <Button title="Acessar" onPress={handleSubmit(onSubmit)} />
+          <Button
+            title="Acessar"
+            onPress={handleSubmit(handleSignIn)}
+            isLoading={isLoading}
+          />
         </Center>
 
         <Center mt={24}>
