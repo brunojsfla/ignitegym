@@ -2,9 +2,20 @@ import { HStack, Heading, Image, Text, VStack, Icon } from "native-base";
 import { TouchableOpacity, TouchableOpacityProps } from "react-native";
 import { Entypo } from "@expo/vector-icons";
 
-type Props = TouchableOpacityProps & {};
+import { ExerciseDTO } from "@dtos/ExerciseDTO";
+import { api } from "@services/api";
 
-export function ExerciseCard({ ...rest }: Props) {
+type Props = TouchableOpacityProps & ExerciseDTO & {};
+
+export function ExerciseCard({
+  thumb,
+  name,
+  series,
+  repetitions,
+  group,
+  demo,
+  ...rest
+}: Props) {
   return (
     <TouchableOpacity {...rest}>
       <HStack
@@ -17,7 +28,7 @@ export function ExerciseCard({ ...rest }: Props) {
       >
         <Image
           source={{
-            uri: "https://www.dicasdetreino.com.br/wp-content/uploads/2018/09/Agachamento-%E2%80%93-Execu%C3%A7%C3%A3o-Varia%C3%A7%C3%B5es-Erros-e-Dicas.jpg",
+            uri: `${api.defaults.baseURL}/exercise/thumb/${thumb}`,
           }}
           alt="Imagem do exercício"
           w={16}
@@ -28,10 +39,10 @@ export function ExerciseCard({ ...rest }: Props) {
         />
         <VStack flex={1}>
           <Heading color="white" fontSize="lg">
-            Agachamento
+            {name}
           </Heading>
           <Text color="gray.200" fontSize="sm" mt={1} numberOfLines={2}>
-            3 séries x 8 repetições
+            {series} séries x {repetitions} repetições
           </Text>
         </VStack>
         <Icon as={Entypo} name="chevron-thin-right" color="gray.300" />

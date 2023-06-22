@@ -1,30 +1,77 @@
-import { VStack, FlatList, HStack, Heading, Text } from "native-base";
+import { VStack, FlatList, HStack, Heading, Text, useToast } from "native-base";
 
 import { HomeHeader } from "@components/HomeHeader";
 import { Group } from "@components/Group";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ExerciseCard } from "@components/ExerciseCard";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { AppNavigatorRoutesProps } from "@routes/app.routes";
 
+import { api } from "@services/api";
+import { AppError } from "@utils/AppError";
+
+import { ExerciseDTO } from "@dtos/ExerciseDTO";
+import { Loading } from "@components/Loading";
+
 export function Home() {
-  const [groups, setGroups] = useState([
-    "costas",
-    "bíceps",
-    "tríceps",
-    "ombro",
-    "perna",
-    "peito",
-    "abdominal",
-  ]);
-  const [groupSelected, setGroupSelected] = useState("perna");
-  const [exercise, setExercise] = useState(["Agachamento", "Extensora"]);
+  const toast = useToast();
+
+  const [groups, setGroups] = useState<string[]>([]);
+  const [groupSelected, setGroupSelected] = useState<string>("");
+  const [exercise, setExercise] = useState<ExerciseDTO[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const navigation = useNavigation<AppNavigatorRoutesProps>();
 
-  function handleOpenExerciseDetails(){
-    navigation.navigate('exercise');
+  function handleOpenExerciseDetails(id: string) {
+    navigation.navigate("exercise", { exerciseId: id });
   }
+
+  async function fetchGroups() {
+    try {
+      const { data } = await api.get("/groups");
+
+      setGroups(data);
+    } catch (error) {
+      const isAppError = error instanceof AppError;
+
+      const title = isAppError
+        ? error.message
+        : "Falha ao buscar os grupos musculares. Tente novamente mais tarde!";
+
+      toast.show({ title, placement: "top", bgColor: "red.500" });
+    }
+  }
+
+  async function fetchExercisesByGroup() {
+    try {
+      setIsLoading(true);
+
+      const { data } = await api.get(`/exercises/bygroup/${groupSelected}`);
+
+      setExercise(data);
+    } catch (error) {
+      const isAppError = error instanceof AppError;
+
+      const title = isAppError
+        ? error.message
+        : "Falha ao buscar os exercícios. Tente novamente mais tarde!";
+
+      toast.show({ title, placement: "bottom", bgColor: "red.500" });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchGroups();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchExercisesByGroup();
+    }, [groupSelected])
+  );
 
   return (
     <VStack flex={1}>
@@ -55,13 +102,28 @@ export function Home() {
             {exercise.length}
           </Text>
         </HStack>
-        <FlatList
-          data={exercise}
-          keyExtractor={(item) => item}
-          renderItem={({ item }) => <ExerciseCard onPress={handleOpenExerciseDetails}/>}
-          showsVerticalScrollIndicator={false}
-          _contentContainerStyle={{ paddingBottom: 20 }}
-        />
+        {isLoading ? (
+          <Loading />
+        ) : (
+          <FlatList
+            data={exercise}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <ExerciseCard
+                onPress={() => handleOpenExerciseDetails(item.id)}
+                id={item.id}
+                thumb={item.thumb}
+                name={item.name}
+                series={item.series}
+                repetitions={item.repetitions}
+                group={item.group}
+                demo={item.demo}
+              />
+            )}
+            showsVerticalScrollIndicator={false}
+            _contentContainerStyle={{ paddingBottom: 20 }}
+          />
+        )}
       </VStack>
     </VStack>
   );
