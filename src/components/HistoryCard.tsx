@@ -1,8 +1,13 @@
 import { HStack, Heading, Text, VStack, Icon } from "native-base";
 
 import { Entypo } from "@expo/vector-icons";
+import { HistoryDTO } from "@dtos/HistoryDTO";
 
-export function HistoryCard() {
+type Params = {
+  data: HistoryDTO;
+};
+
+export function HistoryCard({ data }: Params) {
   return (
     <HStack
       bg="gray.600"
@@ -15,14 +20,14 @@ export function HistoryCard() {
     >
       <VStack mr={5} flex={1}>
         <Heading color="white" fontSize="md" textTransform="capitalize">
-          Pernas
+          {data.group}
         </Heading>
         <Text color="gray.100" fontSize="lg" mt={1} numberOfLines={1}>
-          Agachamento
+          {data.name}
         </Text>
       </VStack>
       <Text color="gray.300" fontSize="md">
-        19:00
+        {data.hour}
       </Text>
     </HStack>
   );
