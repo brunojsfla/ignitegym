@@ -25,6 +25,8 @@ import * as yup from "yup";
 import { AppError } from "@utils/AppError";
 import { api } from "@services/api";
 
+import AvatarUser from "@assets/userPhotoDefault.png";
+
 const PHOTO_SIZE = 33;
 
 type FormDataProps = {
@@ -75,7 +77,7 @@ export function Profile() {
     setPhotoIsLoading(true);
 
     try {
-      let imageResult = await ImagePicker.launchImageLibraryAsync({
+      const imageResult = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 4],
@@ -99,7 +101,39 @@ export function Profile() {
           });
         }
 
-        setImage(imageResult.assets[0].uri);
+        const fileExtension = imageResult.assets[0].uri.split(".").pop();
+
+        const photoProfile = {
+          name: `${user.name}.${fileExtension}`
+            .toLocaleLowerCase()
+            .replace(/ /g, ""),
+          uri: photoInfo.uri,
+          type: `${imageResult.assets[0].type}/${fileExtension}`,
+        } as any;
+
+        const userPhotoUploadForm = new FormData();
+
+        userPhotoUploadForm.append("avatar", photoProfile);
+
+        const avatarUpdatedResponse = await api.patch(
+          "/users/avatar",
+          userPhotoUploadForm,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+
+        const userUpdatedAvatar = user;
+        userUpdatedAvatar.avatar = avatarUpdatedResponse.data.avatar;
+        updateUserProfile(userUpdatedAvatar);
+
+        toast.show({
+          title: "Imagem atualizada com sucesso!",
+          placement: "top",
+          bgColor: "green.500",
+        });
       }
     } catch (error) {
       console.log(error);
@@ -151,7 +185,11 @@ export function Profile() {
             />
           ) : (
             <UserPhoto
-              source={{ uri: image }}
+              source={
+                user.avatar
+                  ? { uri: `${api.defaults.baseURL}/avatar/${user.avatar}` }
+                  : AvatarUser
+              }
               size={PHOTO_SIZE}
               alt="Foto do usuário"
             />
