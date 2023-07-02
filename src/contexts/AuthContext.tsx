@@ -44,12 +44,16 @@ export function AuthContextProvider({ children }: AuthContextProviderProps) {
     }
   }
 
-  async function userAndTokenStorageSave(userData: UserDTO, token: string) {
+  async function userAndTokenStorageSave(
+    userData: UserDTO,
+    token: string,
+    refresh_token: string
+  ) {
     try {
       setIsLoadingUserStorageData(true);
 
       await storageUserSave(userData);
-      await storageAuthTokenSave(token);
+      await storageAuthTokenSave({ token, refresh_token });
     } catch (error) {
       throw error;
     } finally {
@@ -61,8 +65,12 @@ export function AuthContextProvider({ children }: AuthContextProviderProps) {
     try {
       const { data } = await api.post("/sessions", { email, password });
 
-      if (data.user && data.token) {
-        await userAndTokenStorageSave(data.user, data.token);
+      if (data.user && data.token && data.refresh_token) {
+        await userAndTokenStorageSave(
+          data.user,
+          data.token,
+          data.refresh_token
+        );
         userAndTokenUpdate(data.user, data.token);
       }
     } catch (error) {
@@ -98,10 +106,10 @@ export function AuthContextProvider({ children }: AuthContextProviderProps) {
       setIsLoadingUserStorageData(true);
 
       const userLogged = await storageUserGet();
-      const userToken = await storageAuthTokenGet();
+      const { token } = await storageAuthTokenGet();
 
-      if (userToken && userLogged) {
-        userAndTokenUpdate(userLogged, userToken);
+      if (token && userLogged) {
+        userAndTokenUpdate(userLogged, token);
       }
     } catch (error) {
       throw error;
@@ -114,6 +122,14 @@ export function AuthContextProvider({ children }: AuthContextProviderProps) {
     loadUserData();
   }, []);
 
+  useEffect(() => {
+    const subscribe = api.registerInterceptTokenManager(signOut);
+
+    return () => {
+      subscribe();
+    };
+  }, [signOut]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -121,7 +137,7 @@ export function AuthContextProvider({ children }: AuthContextProviderProps) {
         signIn,
         isLoadingUserStorageData,
         signOut,
-        updateUserProfile
+        updateUserProfile,
       }}
     >
       {children}
